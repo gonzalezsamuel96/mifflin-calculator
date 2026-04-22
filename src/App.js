@@ -1,0 +1,197 @@
+import React, { useState } from "https://esm.sh/react@18.3.1";
+import htm from "https://esm.sh/htm@3.1.1";
+
+const html = htm.bind(React.createElement);
+
+const ACTIVITY_OPTIONS = [
+  { value: 1.2, label: "Sedentario" },
+  { value: 1.375, label: "Ligero (1-3 dias)" },
+  { value: 1.55, label: "Moderado (3-5 dias)" },
+  { value: 1.725, label: "Alto (6-7 dias)" },
+  { value: 1.9, label: "Muy alto / trabajo fisico" },
+];
+
+const GOAL_OPTIONS = [
+  { value: -450, label: "Perder grasa" },
+  { value: 0, label: "Mantener peso" },
+  { value: 300, label: "Ganar masa muscular" },
+];
+
+const INITIAL_FORM = {
+  sex: "male",
+  age: 30,
+  weight: 70,
+  height: 175,
+  activity: 1.55,
+  goalOffset: 0,
+};
+
+function calculateBmr({ sex, age, weight, height }) {
+  const base = 10 * weight + 6.25 * height - 5 * age;
+  return sex === "male" ? base + 5 : base - 161;
+}
+
+function formatCalories(value) {
+  return `${Math.round(value).toLocaleString("es-ES")} kcal`;
+}
+
+function getGoalDescription(offset) {
+  if (offset < 0) {
+    return "Deficit moderado para favorecer la perdida de grasa.";
+  }
+
+  if (offset > 0) {
+    return "Superavit controlado para apoyar la ganancia muscular.";
+  }
+
+  return "Ingesta orientativa para mantener tu peso actual.";
+}
+
+function ResultCard({ label, value, copy, accent = false }) {
+  return html`
+    <article className=${`result-box ${accent ? "accent" : ""}`.trim()}>
+      <span className="result-label">${label}</span>
+      <strong>${value}</strong>
+      <p>${copy}</p>
+    </article>
+  `;
+}
+
+export function App() {
+  const [form, setForm] = useState(INITIAL_FORM);
+
+  const bmr = calculateBmr(form);
+  const maintenance = bmr * form.activity;
+  const target = maintenance + form.goalOffset;
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+    const normalizedValue = name === "sex" ? value : Number(value);
+
+    setForm((current) => ({
+      ...current,
+      [name]: normalizedValue,
+    }));
+  }
+
+  return html`
+    <main className="layout">
+      <section className="hero">
+        <p className="eyebrow">Nutricion basada en evidencia</p>
+        <h1>Calculadora de consumo calorico con React y Mifflin-St Jeor</h1>
+        <p className="intro">
+          Una version en React con estado controlado, calculo en tiempo real y
+          una estructura lista para crecer con mas funcionalidades.
+        </p>
+      </section>
+
+      <section className="card app-grid">
+        <form className="calculator">
+          <label>
+            Sexo
+            <select name="sex" value=${form.sex} onChange=${handleChange}>
+              <option value="male">Hombre</option>
+              <option value="female">Mujer</option>
+            </select>
+          </label>
+
+          <label>
+            Edad
+            <input
+              name="age"
+              type="number"
+              min="15"
+              max="100"
+              value=${form.age}
+              onChange=${handleChange}
+            />
+          </label>
+
+          <label>
+            Peso (kg)
+            <input
+              name="weight"
+              type="number"
+              min="30"
+              max="300"
+              step="0.1"
+              value=${form.weight}
+              onChange=${handleChange}
+            />
+          </label>
+
+          <label>
+            Altura (cm)
+            <input
+              name="height"
+              type="number"
+              min="120"
+              max="230"
+              value=${form.height}
+              onChange=${handleChange}
+            />
+          </label>
+
+          <label>
+            Nivel de actividad
+            <select
+              name="activity"
+              value=${form.activity}
+              onChange=${handleChange}
+            >
+              ${ACTIVITY_OPTIONS.map(
+                (option) => html`
+                  <option key=${option.value} value=${option.value}>
+                    ${option.label}
+                  </option>
+                `,
+              )}
+            </select>
+          </label>
+
+          <label>
+            Objetivo
+            <select
+              name="goalOffset"
+              value=${form.goalOffset}
+              onChange=${handleChange}
+            >
+              ${GOAL_OPTIONS.map(
+                (option) => html`
+                  <option key=${option.value} value=${option.value}>
+                    ${option.label}
+                  </option>
+                `,
+              )}
+            </select>
+          </label>
+        </form>
+
+        <section className="results" aria-live="polite">
+          <${ResultCard}
+            label="TMB"
+            value=${formatCalories(bmr)}
+            copy="Energia minima que tu cuerpo necesita en reposo."
+          />
+          <${ResultCard}
+            label="Mantenimiento"
+            value=${formatCalories(maintenance)}
+            copy="Estimacion diaria con tu nivel de actividad actual."
+          />
+          <${ResultCard}
+            label="Objetivo diario"
+            value=${formatCalories(target)}
+            copy=${getGoalDescription(form.goalOffset)}
+            accent=${true}
+          />
+        </section>
+      </section>
+
+      <section className="card formula-card">
+        <h2>Formula utilizada</h2>
+        <p>Hombres: 10 x peso + 6.25 x altura - 5 x edad + 5</p>
+        <p>Mujeres: 10 x peso + 6.25 x altura - 5 x edad - 161</p>
+      </section>
+    </main>
+  `;
+}
